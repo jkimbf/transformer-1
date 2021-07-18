@@ -8,6 +8,7 @@ import time
 
 from torch import nn, optim
 from torch.optim import Adam
+from rouge import Rouge
 
 from data import *
 from models.model.transformer import Transformer
@@ -79,6 +80,8 @@ def evaluate(model, iterator, criterion):
     model.eval()
     epoch_loss = 0
     batch_bleu = []
+    batch_rouge = []
+    rouge = Rouge()
     with torch.no_grad():
         for i, batch in enumerate(iterator):
             src = batch.src
@@ -91,6 +94,7 @@ def evaluate(model, iterator, criterion):
             epoch_loss += loss.item()
 
             total_bleu = []
+            total_rouge = []
             for j in range(batch_size):
                 try:
                     trg_words = idx_to_word(batch.trg[j], loader.target.vocab)
@@ -98,14 +102,22 @@ def evaluate(model, iterator, criterion):
                     output_words = idx_to_word(output_words, loader.target.vocab)
                     bleu = get_bleu(hypotheses=output_words.split(), reference=trg_words.split())
                     total_bleu.append(bleu)
+
+                    rouge_score = rouge.get_scores(output_words, trg_words)
+                    total_rouge.append(rouge_score[0]['rouge-l']['r']) # getting recall value
                 except:
                     pass
 
             total_bleu = sum(total_bleu) / len(total_bleu)
             batch_bleu.append(total_bleu)
 
+            total_rouge = sum(total_rouge) / len(total_rouge)
+            batch_rouge.append(total_rouge)
+
     batch_bleu = sum(batch_bleu) / len(batch_bleu)
-    return epoch_loss / len(iterator), batch_bleu
+    batch_rouge = sum(batch_rouge) / len(batch_rouge)
+
+    return epoch_loss / len(iterator), batch_bleu, batch_rouge
 
 
 def run(total_epoch, best_loss):
@@ -113,7 +125,7 @@ def run(total_epoch, best_loss):
     for step in range(total_epoch):
         start_time = time.time()
         train_loss = train(model, train_iter, optimizer, criterion, clip)
-        valid_loss, bleu = evaluate(model, valid_iter, criterion)
+        valid_loss, bleu, rouge = evaluate(model, valid_iter, criterion)
         end_time = time.time()
 
         if step > warmup:
@@ -144,6 +156,7 @@ def run(total_epoch, best_loss):
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
         print(f'\tVal Loss: {valid_loss:.3f} |  Val PPL: {math.exp(valid_loss):7.3f}')
         print(f'\tBLEU Score: {bleu:.3f}')
+        print(f'\tRouge Recall: {rouge:.3f}')
 
 
 if __name__ == '__main__':
