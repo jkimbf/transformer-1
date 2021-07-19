@@ -104,7 +104,7 @@ def evaluate(model, iterator, criterion):
                     total_bleu.append(bleu)
 
                     rouge_score = rouge.get_scores(output_words, trg_words)
-                    total_rouge.append(rouge_score[0]['rouge-l']['r']) # getting recall value
+                    total_rouge.append(rouge_score[0]['rouge-l']['f']) # getting recall value
                 except:
                     pass
 
