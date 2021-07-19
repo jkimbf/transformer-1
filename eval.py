@@ -9,7 +9,6 @@ from util.bleu import idx_to_word, get_bleu
 
 
 def eval(model, iterator):
-    model.eval()
     epoch_loss = 0
     batch_bleu = []
     batch_rouge = []
